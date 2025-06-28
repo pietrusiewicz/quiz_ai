@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz</title>
+	<style>
+        .container { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; }
+        .part { border: 1px solid #ccc; padding: 10px; }
+    </style>
+</head>
+<body>
+<button onclick="reloadData()">Reload Data</button>
+
+<div class="container">
+        <!-- First Part -->
+        <div class="part" id="first-part">
+			<form id="quizForm">
+			{% for question in questions %}
+				<p>{{ question.question }}</p>
+				<label><input type="radio" name="q{{ question.id }}" value="{{ question.options[0] }}"> {{
+	question.options[0] }}</label><br>
+				<label><input type="radio" name="q{{ question.id }}" value="{{ question.options[1] }}"> {{
+	question.options[1] }}</label><br>
+				<label><input type="radio" name="q{{ question.id }}" value="{{ question.options[2] }}"> {{
+	question.options[2] }}</label><br>
+				<label><input type="radio" name="q{{ question.id }}" value="{{ question.options[3] }}"> {{
+	question.options[3] }}</label><br>
+			{% endfor %}
+			<button type="submit">Submit Answers</button>
+			</form>
+		</div>
+
+        <!-- Second Part - CSV Editor -->
+        <div class="part" id="second-part">
+            <h2>Edit CSV File</h2>
+			<form id="editForm">
+				<!-- Loop through questions to create editable fields -->
+				{% for question in questions %}
+					<ul>
+					<div>
+						<li><label for="id_{{ question.id }}">ID {{ question.id }}:</label>
+						<input type="text" id="id_{{ question.id }}" value="{{ question.id }}"
+		readonly></li>
+
+						<li><label for="question_{{ question.id }}">Question {{ question.id
+		}}:</label>
+						<input type="text" id="question_{{ question.id }}" value="{{
+		question.question }}" readonly></li>
+
+						{% set options = question.options %}
+						
+						{% for i in range(4) %}
+						<li>
+							<label for="option_{{ question.id }}_{{ i }}">Option {{ i+1 }} : </label>
+							<input type="text" id="option_{{ question.id }}_{{ i }}" value="{{
+		options[i] if i < options|length else '' }}">
+						</li>
+						{% endfor %}
+						
+
+						<label for="answer_{{ question.id }}">Answer {{ question.id }}:</label>
+						<input type="text" id="answer_{{ question.id }}" value="{{
+		question.answer }}" readonly>
+					</div>
+					</ul>
+				{% endfor %}
+				<button type="submit">Submit Changes</button>
+			</form>
+			</div>
+
+        <!-- Third Part -->
+        <div class="part" id="third-part">
+			<h2>Quiz generator</h2>
+			<label for="llm">Select your LLM to generate questions</label>
+			<select id="llm" name="llm">
+			{% for llm in llms %}
+				<option id="llm" value="{{llm}}">{{llm}}</option>
+			{% endfor %}
+			</select>
+			
+			<div id="terminal">
+			<div id="output"></div>
+			<input type="text" id="input" placeholder="Wpisz wiadomość...">
+			</div>
+		</div>
+    </div>
+    
+    <script>
+		function reloadData() {
+			fetch('/reload-data')
+			  .then(response => response.json())
+			  .then(data => console.log(data))  // Handle the response as needed, maybe re-render questions?
+			  .catch(error => console.error('Error:', error));
+		}
+        document.getElementById('quizForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const answers = {};
+            {% for question in questions %}
+                answers["q{{ question.id }}"] = document.querySelector('input[name="q{{ question.id
+}}"]:checked').value;
+            {% endfor %}
+            fetch('/submit', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({answers: answers})
+            })
+            .then(response => response.json())
+            .then(data => alert(`You got ${data.correct_count} out of ${data.total} questions correct.`));
+        });
+		
+		document.getElementById('editForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the default form submission
+
+            const updates = [];
+            {% for question in questions %}
+                const id_{{ question.id }} = document.getElementById('id_{{ question.id
+}}').value;
+                const question_{{ question.id }} = document.getElementById('question_{{
+question.id }}').value;
+                let options_{{ question.id }} = [];
+                {% for i in range(4) %}
+                    const option_{{ question.id }}_{{ i }} =
+document.getElementById('option_{{ question.id }}_{{ i }}').value;
+                    if (option_{{ question.id }}_{{ i }}) {
+                        options_{{ question.id }}.push(option_{{ question.id }}_{{ i }});
+                    }
+                {% endfor %}
+
+                updates.push({
+                    id: parseInt(id_{{ question.id }}),
+                    question: question_{{ question.id }},
+                    options: options_{{ question.id }},
+                    answer: document.getElementById('answer_{{ question.id }}').value
+                });
+            {% endfor %}
+
+            fetch('/update_questions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updates)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.status === 'success') {
+                    alert('Questions updated successfully!');
+                } else {
+                    alert('Failed to update questions.');
+                }
+            });
+        });
+		
+		
+		const input = document.getElementById('input');
+        const output = document.getElementById('output');
+		const llm = document.getElementById('llm').value;
+        
+        input.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter') {
+                const message = input.value;
+                output.innerHTML += `<div>> ${message}</div>`;
+                output.innerHTML += `<div>> ${llm}</div>`;
+                input.value = '';
+                
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, llm })
+                });
+                
+                const data = await response.json();
+                output.innerHTML += `<div>${data.response}</div>`;
+                output.scrollTop = output.scrollHeight;
+            }
+        });
+		
+    </script>
+</body>
+</html>

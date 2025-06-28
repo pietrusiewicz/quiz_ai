@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz</title>
+</head>
+<body>
+    <form id="quizForm">
+        {% for question in questions %}
+            <p>{{ question.question }}</p>
+            <label><input type="radio" name="q{{ question.id }}" value="{{ question.options[0] }}"> {{
+question.options[0] }}</label><br>
+            <label><input type="radio" name="q{{ question.id }}" value="{{ question.options[1] }}"> {{
+question.options[1] }}</label><br>
+            <label><input type="radio" name="q{{ question.id }}" value="{{ question.options[2] }}"> {{
+question.options[2] }}</label><br>
+            <label><input type="radio" name="q{{ question.id }}" value="{{ question.options[3] }}"> {{
+question.options[3] }}</label><br>
+        {% endfor %}
+        <button type="submit">Submit Answers</button>
+    </form>
+    <script>
+        document.getElementById('quizForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const answers = {};
+            {% for question in questions %}
+                answers["q{{ question.id }}"] = document.querySelector('input[name="q{{ question.id
+}}"]:checked').value;
+            {% endfor %}
+            fetch('/submit', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({answers: answers})
+            })
+            .then(response => response.json())
+            .then(data => alert(`You got ${data.correct_count} out of ${data.total} questions correct.`));
+        });
+		function reloadData() {
+        // Make an AJAX request to fetch the latest data from the server
+        fetch('/')  // '/' is the root URL of your Flask app
+          .then(response => response.text())  // Assuming you return plain text or JSON
+          .then(data => document.getElementById('data').innerText = data)
+          .catch(error => console.error('Error:', error));
+      }
+    </script>
+</body>
+</html>
