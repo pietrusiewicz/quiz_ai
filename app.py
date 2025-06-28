@@ -83,6 +83,7 @@ def update_questions():
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    global response
     user_input = request.json.get('message')
     clear_prompt = f"""
     Create a CSV-formatted list of five multiple-choice questions with the following structure:
@@ -105,10 +106,24 @@ def chat():
         model=model_llm,  # np. 'llama2', 'mistral' itp.
         prompt=clear_prompt
     )
+    resp_str = response.response
+    resp_str += "\n <a href='/save'>update the questions</a>"
 
-    print(repr(response.response))
-    return jsonify({'response': repr(response.response.replace('\n','<br/>'))})
+    print(repr(resp_str))
+    return jsonify({'response': repr(resp_str.replace('\n','<br/>'))})
 
+
+@app.route('/save')
+def save():
+    # Data to be saved (example data)
+    data_to_save = response.response.split('```')[1].strip()
+    print(data_to_save)
+    f = open('questions.csv', 'w')
+    f.write(data_to_save)
+
+    return jsonify({"status": "success", "message": "Data saved successfully"})
+    
+    
 if __name__ == '__main__':
     questions = load_questions()  # Load questions when the app starts
     llms = list(map(lambda x:x.model, list(ollama.list())[0][1]))
