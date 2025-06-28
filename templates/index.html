@@ -170,7 +170,7 @@ document.getElementById('option_{{ question.id }}_{{ i }}').value;
                 });
                 
                 const data = await response.json();
-                output.innerHTML += `<div>${data.response}</div>`;
+                output.innerHTML += `<p>${data.response}</p>`;
                 output.scrollTop = output.scrollHeight;
             }
         });

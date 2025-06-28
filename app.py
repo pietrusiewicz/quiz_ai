@@ -84,17 +84,30 @@ def update_questions():
 @app.route('/chat', methods=['POST'])
 def chat():
     user_input = request.json.get('message')
+    clear_prompt = f"""
+    Create a CSV-formatted list of five multiple-choice questions with the following structure:
+
+    ```
+    id,q,A,B,C,D,answer
+    ```
+
+    For example:
+    1,What is the capital of France,Paris,London,Madrid,Rome,Paris
+    2,Who painted the Mona Lisa,Vincent van Gogh,Leonardo da Vinci,Pablo Picasso,Michelangelo,Leonardo da Vinci
+
+    Please generate five such questions about {user_input}, ensuring that each question has one correct answer and three distractors. Without unnecessary questions"""
     print(user_input)
+    print(clear_prompt)
+    
     # Tutaj integracja z Ollamą - przykład (może wymagać dostosowania)
     model_llm = request.json.get('llm')
     response = ollama.generate(
         model=model_llm,  # np. 'llama2', 'mistral' itp.
-        prompt=user_input
+        prompt=clear_prompt
     )
-    
-    #print(response.__dir__())
-    print(response.response)
-    return jsonify({'response': response.response})
+
+    print(repr(response.response))
+    return jsonify({'response': repr(response.response.replace('\n','<br/>'))})
 
 if __name__ == '__main__':
     questions = load_questions()  # Load questions when the app starts
